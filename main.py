@@ -1,13 +1,14 @@
-import telebot
+import telebot#pip
 from telebot import types
-from telegram_bot_pagination import InlineKeyboardPaginator
+from telegram_bot_pagination import InlineKeyboardPaginator#pip
 import sqlite3
 import config
 import os
 import datetime
 from datetime import datetime
-import pytz
+import pytz#pip
 import math
+import time
 #Europe/Kyiv
 
 bot = telebot.TeleBot(config.TOKEN)
@@ -105,7 +106,6 @@ def start(message):
         name = message.from_user.first_name
         print(user," ",uid," ",name)
         markup = types.InlineKeyboardMarkup(row_width=2)
-        global msg
         if uid in admin:
             markup.add(
             types.InlineKeyboardButton("Вітрина🔞🚬", callback_data="vitryna"),
@@ -362,9 +362,12 @@ def cart_call(call):
 
 @bot.callback_query_handler(func=lambda call: call.data.split('#')[0]=='buy')
 def bbuy(call):
-    cart_price = call.data.split('#')[1]
-    bot.delete_message(call.message.chat.id,call.message.message_id)
-    buy_elf(call, cart_price)
+    try:
+        cart_price = call.data.split('#')[1]
+        bot.delete_message(call.message.chat.id,call.message.message_id)
+        buy_elf(call, cart_price)
+    except Exception as e:
+        print(e)
 
 @bot.callback_query_handler(func=lambda call: call.data.split('#')[0]=='order')
 def order_call(call):
@@ -439,19 +442,22 @@ def pay_check(call):
 
 @bot.callback_query_handler(func=lambda call: call.data.split('#')[0]=='ttt')
 def ttt(call):
-    bot.delete_message(call.message.chat.id,call.message.message_id)
-    page = int(call.data.split('#')[1])
-    tt = int(call.data.split('#')[2])
-    next_prvs = call.data.split('#')[3]
-    max_tt = int(call.data.split('#')[4])
-    if tt == 1 and next_prvs == "-":
-        vit(call, page, tt)
-    elif tt == max_tt and next_prvs == "+":
-        vit(call, page, tt)
-    elif next_prvs == "+":
-        vit(call, page, tt+1)
-    elif next_prvs == "-":
-        vit(call, page, tt-1)
+    try:
+        bot.delete_message(call.message.chat.id,call.message.message_id)
+        page = int(call.data.split('#')[1])
+        tt = int(call.data.split('#')[2])
+        next_prvs = call.data.split('#')[3]
+        max_tt = int(call.data.split('#')[4])
+        if tt == 1 and next_prvs == "-":
+            vit(call, page, tt)
+        elif tt == max_tt and next_prvs == "+":
+            vit(call, page, tt)
+        elif next_prvs == "+":
+            vit(call, page, tt+1)
+        elif next_prvs == "-":
+            vit(call, page, tt-1)
+    except Exception as e:
+        print(e)
 
 def cancel_or(or_id):
     try:
@@ -472,16 +478,17 @@ def cancel_or(or_id):
 def edit_call(call):
     try:
         id = int(call.data.split('#')[1])
-        edit_second_stage(call, id)
+        page = int(call.data.split('#')[2])
+        edit_second_stage(call, id, bp=page)
     except Exception as e:
         print(e)
 
 @bot.callback_query_handler(func=lambda call: call.data.split('#')[0]=='edit_page')
 def edit_page(call):
     try:
-        page = int(call.data.split()[1])
-        next_prvs = call.data.split()[2]
-        max_page = int(call.data.split()[3])
+        page = int(call.data.split('#')[1])
+        next_prvs = call.data.split('#')[2]
+        max_page = int(call.data.split('#')[3])
         bot.delete_message(call.message.chat.id,call.message.message_id)
         if page == 1 and next_prvs == "-":
             edit_napov(call, page=page)
@@ -491,6 +498,15 @@ def edit_page(call):
             edit_napov(call, page=page+1)
         elif next_prvs == "-":
             edit_napov(call, page=page-1)
+    except Exception as e:
+        print(e)
+
+@bot.callback_query_handler(func=lambda call: call.data.split('#')[0]=='page_b')
+def page_b(call):
+    try:
+        page = int(call.data.split('#')[1])
+        bot.delete_message(call.message.chat.id,call.message.message_id)
+        edit_napov(call, page)
     except Exception as e:
         print(e)
 
@@ -535,7 +551,7 @@ def callback_query(call):
             bot.delete_message(call.message.chat.id,call.message.message_id)
             cart(call)
         elif call.data == "or_cab":
-            #bot.delete_message(call.message.chat.id,call.message.message_id)
+            bot.delete_message(call.message.chat.id,call.message.message_id)
             if call.message.chat.id in admin:
                 print(call.data)
                 or_cab(call)
@@ -599,7 +615,7 @@ def edit_napov(call, page=1):
         while b<=i:
             try:
                 item=temp_edit[b-1]
-                buttons_list.append(types.InlineKeyboardButton(text=item[0][2], callback_data="edit#{}".format(item[0][0])))
+                buttons_list.append(types.InlineKeyboardButton(text=item[0][2], callback_data="edit#{}#{}".format(item[0][0], page)))
                 b=b+1
             except Exception as e:
                 b=b+1
@@ -607,13 +623,13 @@ def edit_napov(call, page=1):
         mm = types.InlineKeyboardMarkup(row_width=3)
         mm.add(*buttons_list)
         if math.ceil(l) > 1:
-            mm.add(types.InlineKeyboardButton("⬅️", callback_data="edit_page#{}#-#{}".format(page, math.ceil(l))), types.InlineKeyboardButton("{}/{}".format(page, math.ceil(l)), callback_data="gfd"), types.InlineKeyboardButton("➡️", callback_data="edit_page#{}#+#{}".format(page, math.ceil(l))))
+            mm.add(types.InlineKeyboardButton("←", callback_data="edit_page#{}#-#{}".format(page, math.ceil(l))), types.InlineKeyboardButton("{}/{}".format(page, math.ceil(l)), callback_data="gfd"), types.InlineKeyboardButton("→", callback_data="edit_page#{}#+#{}".format(page, math.ceil(l))))
         mm.add(types.InlineKeyboardButton("↩️На головну↩️",callback_data="back"), types.InlineKeyboardButton("Назад🔙",callback_data="back_edit"))
         bot.send_message(call.message.chat.id, "Панове, який саме продукт ви бажаєте відредагувати?📝", reply_markup=mm)
     except Exception as e:
         print(e)
 #adm
-def edit_second_stage(call, id, page=1):
+def edit_second_stage(call, id, bp, page=1):
     try:
         cur.execute("""
         SELECT
@@ -630,12 +646,26 @@ def edit_second_stage(call, id, page=1):
         ORDER BY "main"."taste"."count" """, [id])
         ucheck = cur.fetchall()
         print(ucheck)
-        text_d = ["<b>Всі відомості про цю позицію:</b>\n"]
-        for item in ucheck:
-            text_d.append("-----{}-----\n")
+        text_d = ["<b>Всі відомості про {}:</b>\n".format(ucheck[0][2])]
+        mm = types.InlineKeyboardMarkup(row_width=3)
+        l = len(ucheck)/9
+        buttons = []
+        i = 9*page
+        b = i-8
+        while b<=i:
+            try:
+                item = ucheck[b-1]
+                text_d.append("----------<b>{}</b>----------\n<b>Залишок</b> --- {}\n<b>Ціна</b> --- {}\n".format(item[4].replace('_', ' '), item[5], item[3]))
+                buttons.append(types.InlineKeyboardButton(text=item[4].replace('_', ' '), callback_data="edit_taste#{}#{}".format(item[0], item[4])))
+                b=b+1
+            except Exception as e:
+                b=b+1
+                pass
+        mm.add(*buttons)
+        mm.add(types.InlineKeyboardButton(text="Назад🔙", callback_data="page_b#{}".format(bp)), types.InlineKeyboardButton("↩️На головну↩️",callback_data="back"))
         temp_photo = open(ucheck[0][1], 'rb')
         text = ''.join(text_d)
-        bot.send_photo(call.message.chat.id, temp_photo, caption=text, parse_mode='html')
+        bot.send_photo(call.message.chat.id, temp_photo, caption=text, parse_mode='html', reply_markup=mm)
         temp_photo.close()
     except Exception as e:
         print(e)
@@ -936,7 +966,7 @@ def vit(message, page=1, tt=1):   #вивід вітрини
                 pass
         print("bbbb")
         if math.ceil(l) > 1:
-            paginator.add_before(types.InlineKeyboardButton("⬅️", callback_data="ttt#{}#{}#-#{}".format(page, tt, math.ceil(l))), types.InlineKeyboardButton("{}/{}".format(tt, math.ceil(l)), callback_data="gfd"), types.InlineKeyboardButton("➡️", callback_data="ttt#{}#{}#+#{}".format(page, tt, math.ceil(l))))
+            paginator.add_before(types.InlineKeyboardButton("←", callback_data="ttt#{}#{}#-#{}".format(page, tt, math.ceil(l))), types.InlineKeyboardButton("{}/{}".format(tt, math.ceil(l)), callback_data="gfd"), types.InlineKeyboardButton("→", callback_data="ttt#{}#{}#+#{}".format(page, tt, math.ceil(l))))
         print("fdf")
         paginator.add_after(types.InlineKeyboardButton('↩️На головну↩️', callback_data='back'))
         temp_photo = open(temp_vit[page-1][0][1], 'rb')
@@ -992,58 +1022,61 @@ def buy_elf(message, cart_price):
         print(e)
 
 def order(call, pay, dt, cart_price):
-    num = int(dt)
-    uuid = call.from_user.id
-    status=0
-    result = check(uuid)
-    if result is None or len(result)==0:
-        print("ok")
-        cur.execute(""" SELECT * FROM "main"."cart" WHERE "main"."cart"."uid" = ? """,[uuid])
-        cart = cur.fetchall()
-        cur.execute(""" SELECT or_id FROM orders ORDER BY or_id DESC LIMIT 1 """)
-        max_id = cur.fetchone()
-        mx_id=0
-        if max_id is None:
-            mx_id=1
-        else:
-            mx_id=max_id[0]+1
-        print(max_id)
-        del_info = " "
-        message_seller = "  "
-        country_time_zone = pytz.timezone('Europe/Kyiv')
-        today = datetime.now(country_time_zone)
-        temp_or = [str(today.day),".",str(today.month),".",str(today.year)," ",str(today.hour),":",str(today.minute),":",str(today.second)]
-        for item in cart:
-            print(item)
-            cur.execute(""" INSERT INTO orders VALUES (?,?,?,?,?,?,?,?,?,?,?,?) """,(mx_id, item[0], item[1], item[2], item[3], item[4], num, status, del_info, ''.join(temp_or), pay, message_seller))
-            conn.commit()
-            cur.execute(""" UPDATE taste SET count = count - ?
-                WHERE "main"."taste"."id" = ?
-                AND "main"."taste"."taste" = ? """,(item[3], item[0], item[2]))
-            conn.commit()
-        if pay == 1 or "1":
-            pay_verification(mx_id, cart_price)
-        if num == 0:
-            print("fff")
-            buy_keyboard = types.InlineKeyboardMarkup()
-            buy_keyboard.add(types.InlineKeyboardButton("❌Відмінити❌", callback_data="bb#{}".format(mx_id)))
-            msgs = bot.send_message(call.message.chat.id, "Введіть будь ласка номер телефону та ваше ім'я':", reply_markup=buy_keyboard)
-            bot.register_next_step_handler(msgs, get_num)
-        elif num == 1:
-            msgs = bot.send_message(call.message.chat.id, "Введіть будь ласка ваше Прізвище Ім'я По батькові, номер телефону та адресою бажаного поштомату або номером:\nЗверніть увагу, що потрібно вводити через кому(Приклад: Іван Сидоренко Іванович, 0680000000, Адреса поштомату або його номер),а також, що вам потрібно мати програму нової пошти")
-        elif num == 2:
-            msgs = bot.send_message(call.message.chat.id, "Введіть будь ласка ваше Прізвище Ім'я По батькові, номер телефону, адресу відділення та номер:\nЗверніть увагу, що потрібно вводити через кому(Приклад: Іван Сидоренко Іванович, 0680000000, Область Місто/село номер-відділення)")
-        elif num == 3:
-            msgs = bot.send_message(call.message.chat.id, "Введіть будь ласка ваше ім'я, номер телефону та Адресу:\n Зверніть увагу, що потрібно записувати через кому—Приклад(Іван, 0680000000, Вул Наукова 55Б)")
-        #bot.register_next_step_handler()
+    try:
+        num = int(dt)
+        uuid = call.from_user.id
+        status=0
+        result = check(uuid)
+        if result is None or len(result)==0:
+            print("ok")
+            cur.execute(""" SELECT * FROM "main"."cart" WHERE "main"."cart"."uid" = ? """,[uuid])
+            cart = cur.fetchall()
+            cur.execute(""" SELECT or_id FROM orders ORDER BY or_id DESC LIMIT 1 """)
+            max_id = cur.fetchone()
+            mx_id=0
+            if max_id is None:
+                mx_id=1
+            else:
+                mx_id=max_id[0]+1
+            print(max_id)
+            del_info = " "
+            message_seller = "  "
+            country_time_zone = pytz.timezone('Europe/Kyiv')
+            today = datetime.now(country_time_zone)
+            temp_or = [str(today.day),".",str(today.month),".",str(today.year)," ",str(today.hour),":",str(today.minute),":",str(today.second)]
+            for item in cart:
+                print(item)
+                cur.execute(""" INSERT INTO orders VALUES (?,?,?,?,?,?,?,?,?,?,?,?) """,(mx_id, item[0], item[1], item[2], item[3], item[4], num, status, del_info, ''.join(temp_or), pay, message_seller))
+                conn.commit()
+                cur.execute(""" UPDATE taste SET count = count - ?
+                    WHERE "main"."taste"."id" = ?
+                    AND "main"."taste"."taste" = ? """,(item[3], item[0], item[2]))
+                conn.commit()
+            if pay == 1 or "1":
+                pay_verification(mx_id, cart_price)
+            if num == 0:
+                print("fff")
+                buy_keyboard = types.InlineKeyboardMarkup()
+                buy_keyboard.add(types.InlineKeyboardButton("❌Відмінити❌", callback_data="bb#{}".format(mx_id)))
+                msgs = bot.send_message(call.message.chat.id, "Введіть будь ласка номер телефону та ваше ім'я':", reply_markup=buy_keyboard)
+                bot.register_next_step_handler(msgs, get_num)
+            elif num == 1:
+                msgs = bot.send_message(call.message.chat.id, "Введіть будь ласка ваше Прізвище Ім'я По батькові, номер телефону та адресою бажаного поштомату або номером:\nЗверніть увагу, що потрібно вводити через кому(Приклад: Іван Сидоренко Іванович, 0680000000, Адреса поштомату або його номер),а також, що вам потрібно мати програму нової пошти")
+            elif num == 2:
+                msgs = bot.send_message(call.message.chat.id, "Введіть будь ласка ваше Прізвище Ім'я По батькові, номер телефону, адресу відділення та номер:\nЗверніть увагу, що потрібно вводити через кому(Приклад: Іван Сидоренко Іванович, 0680000000, Область Місто/село номер-відділення)")
+            elif num == 3:
+                msgs = bot.send_message(call.message.chat.id, "Введіть будь ласка ваше ім'я, номер телефону та Адресу:\n Зверніть увагу, що потрібно записувати через кому—Приклад(Іван, 0680000000, Вул Наукова 55Б)")
+            #bot.register_next_step_handler()
 
-    else:
-        text = ['На жаль, зараз неможливо оформити замовлення, оскільки у вас в корзині вибрана більша кількість, ніж є у наявності\n\n']
-        for item in result:
-            text.append("*{}* — *{}* \nУ вас в корзині (*{}* шт.), але доступно — (*{}* шт.)\n".format(item[2],item[3],item[4],item[5]))
-        buy_keyboard = types.InlineKeyboardMarkup()
-        buy_keyboard.add(types.InlineKeyboardButton("↩️На головну↩️",callback_data="back"))
-        bot.send_message(call.message.chat.id, text=''.join(text), reply_markup=buy_keyboard, parse_mode="Markdown")
+        else:
+            text = ['На жаль, зараз неможливо оформити замовлення, оскільки у вас в корзині вибрана більша кількість, ніж є у наявності\n\n']
+            for item in result:
+                text.append("*{}* — *{}* \nУ вас в корзині (*{}* шт.), але доступно — (*{}* шт.)\n".format(item[2],item[3],item[4],item[5]))
+            buy_keyboard = types.InlineKeyboardMarkup()
+            buy_keyboard.add(types.InlineKeyboardButton("↩️На головну↩️",callback_data="back"))
+            bot.send_message(call.message.chat.id, text=''.join(text), reply_markup=buy_keyboard, parse_mode="Markdown")
+    except Exception as e:
+        print(e)
 
 def pay_verification(or_id, cart_price):
     try:
@@ -1055,23 +1088,26 @@ def pay_verification(or_id, cart_price):
         print(e)
 
 def get_num(message):
-    prvs = message.message_id-1
-    bot.delete_message(message.chat.id, prvs)
-    cur.execute(""" SELECT * FROM orders WHERE uid = ? ORDER BY or_id DESC LIMIT 1""",[message.from_user.id])
-    ord = cur.fetchone()
-    if ord[8] == " ":
-        max_or_id = ord[0]
-        print(max_or_id)
-        text = message.text
-        print(text)
-        cur.execute(""" UPDATE orders SET delivery_info = ? WHERE or_id = ? """, (text, max_or_id))
-        conn.commit()
-        get_num = types.InlineKeyboardMarkup()
-        get_num.add(types.InlineKeyboardButton("↩️На головну↩️",callback_data="back"))
-        bot.send_message(message.chat.id, "Ваше замовлення успішно оформлене, скоро з вами зв'яжеться продавець!", reply_markup=get_num)
-        notice_new_or(message)
-    else:
-        print("okk")
+    try:
+        prvs = message.message_id-1
+        bot.delete_message(message.chat.id, prvs)
+        cur.execute(""" SELECT * FROM orders WHERE uid = ? ORDER BY or_id DESC LIMIT 1""",[message.from_user.id])
+        ord = cur.fetchone()
+        if ord[8] == " ":
+            max_or_id = ord[0]
+            print(max_or_id)
+            text = message.text
+            print(text)
+            cur.execute(""" UPDATE orders SET delivery_info = ? WHERE or_id = ? """, (text, max_or_id))
+            conn.commit()
+            get_num = types.InlineKeyboardMarkup()
+            get_num.add(types.InlineKeyboardButton("↩️На головну↩️",callback_data="back"))
+            bot.send_message(message.chat.id, "Ваше замовлення успішно оформлене, скоро з вами зв'яжеться продавець!", reply_markup=get_num)
+            notice_new_or(message)
+        else:
+            print("okk")
+    except Exception as e:
+        print(e)
 
 def notice_new_or(message):
     try:
@@ -1213,5 +1249,10 @@ bot.enable_save_next_step_handlers(delay=2)
 
 bot.load_next_step_handlers()
 
-
-bot.polling(none_stop=True)
+while True:
+    try:
+        bot.polling(none_stop=True, interval=0)
+    except Exception as e:
+        print(e)
+        print("Bot polling eror")
+        time.sleep(15)
